@@ -8,6 +8,44 @@ from django.utils.translation import ugettext_lazy as _
 from utils.models import BaseModel
 
 
+class EnterpriseInfo(BaseModel):
+    u"""企业的基本信息表
+    user_id：企业用户暂设置为0即无，企业超级管理员
+    """
+    cn_name = models.CharField(u"中文名称", max_length=200, db_index=True)
+    en_name = models.CharField(u"英文名称", max_length=200, db_index=True, blank=True, null=True, default=u'')
+    short_name = models.CharField(u"企业简写", max_length=64, db_index=True, blank=True, null=True)
+    linkman = models.CharField(u"联系人", max_length=64, blank=True, null=True)
+    phone = models.CharField(u"联系人电话", max_length=20, blank=True, null=True)
+    fax_number = models.CharField(u"传真", max_length=20, blank=True, null=True)
+    email = models.EmailField(u'联系人邮箱', blank=True, null=True)
+    remark = models.CharField(u"备注", max_length=200, blank=True, null=True)
+    test_count = models.PositiveIntegerField(u"测验人次", default=0)
+    enterprise_dedicated_link = models.CharField(u"企业专属链接", max_length=60, blank=True, null=True)
+
+class BaseOrganization(BaseModel):
+    """base organization object"""
+
+    name = models.CharField(max_length=40)
+    parent_id = models.BigIntegerField(db_index=True, default=0)
+    enterprise = models.ForeignKey(EnterpriseInfo,on_delete=models.CASCADE)
+
+class Dim_Sequence(models.Model):
+    value = models.CharField(max_length=50)
+    value_en = models.CharField(max_length=50)
+
+class Dim_Gender(models.Model):
+    value = models.CharField(max_length=50)
+    value_en = models.CharField(max_length=50)
+
+class Dim_Rank(models.Model):
+    value = models.CharField(max_length=50)
+    value_en = models.CharField(max_length=50)
+
+class Dim_Marriage(models.Model):
+    value = models.CharField(max_length=50)
+    value_en = models.CharField(max_length=50)
+
 class AuthUser(AbstractUser):
     u"""
     用户账号表
@@ -37,6 +75,13 @@ class AuthUser(AbstractUser):
     active_code = models.CharField(u"激活码", max_length=20, db_index=True, blank=True, null=True)
     active_code_valid = models.BooleanField(u"激活码是否有效", default=False, db_index=True)
     remark = models.CharField(u"备注", max_length=400, null=True, db_index=True)
+    sequence = models.ForeignKey(Dim_Sequence,null= True)
+    gender = models.ForeignKey(Dim_Gender,null= True)
+    birthday = models.DateField(null= True)
+    rank = models.ForeignKey(Dim_Rank,null= True)
+    hiredate = models.DateField(null= True)
+    marriage = models.ForeignKey(Dim_Marriage,null= True)
+    organization = models.ForeignKey(BaseOrganization, null=True)
 
     class Meta:
         verbose_name = '基本信息'
@@ -58,7 +103,6 @@ class AuthUser(AbstractUser):
         if self.email:
             return self.email
         return self.username
-
 
 class People(BaseModel):
     u"""参与测评的用户，active_code，active_code_valid 不需要"""
@@ -145,20 +189,6 @@ class PeopleOrganization(BaseModel):
     org_code = models.CharField(u"组织码", max_length=32, db_index=True, blank=True, null=True)
 
 
-class EnterpriseInfo(BaseModel):
-    u"""企业的基本信息表
-    user_id：企业用户暂设置为0即无，企业超级管理员
-    """
-    cn_name = models.CharField(u"中文名称", max_length=200, db_index=True)
-    en_name = models.CharField(u"英文名称", max_length=200, db_index=True, blank=True, null=True, default=u'')
-    short_name = models.CharField(u"企业简写", max_length=64, db_index=True, blank=True, null=True)
-    linkman = models.CharField(u"联系人", max_length=64, blank=True, null=True)
-    phone = models.CharField(u"联系人电话", max_length=20, blank=True, null=True)
-    fax_number = models.CharField(u"传真", max_length=20, blank=True, null=True)
-    email = models.EmailField(u'联系人邮箱', blank=True, null=True)
-    remark = models.CharField(u"备注", max_length=200, blank=True, null=True)
-    test_count = models.PositiveIntegerField(u"测验人次", default=0)
-    enterprise_dedicated_link = models.CharField(u"企业专属链接", max_length=60, blank=True, null=True)
 
 
 # 9.15
@@ -184,7 +214,7 @@ class Organization(BaseModel):
     en_name = models.CharField(u"英文名称", max_length=200, db_index=True, default=u'', null=True)
     identification_code = models.CharField(u"标识码", max_length=20, db_index=True)
     assess_id = models.BigIntegerField(u"项目ID", db_index=True, null=True)
-
+    baseorganization = models.ForeignKey(BaseOrganization,null=True)
 
 class UserAdminRole(BaseModel):
     u"""用户管理员角色"""
@@ -300,7 +330,7 @@ class BusinessPermission(object):
     PERMISSION_MAP = [
         {"pid": PERMISSION_PERMISSION_ROLE, "pname": u"增加/删除/修改/查看角色", "pdesc": u"具有增加/删除/修改/查看角色权限"},
         {"pid": PERMISSION_PERMISSION_ROLE_USER, "pname": u"增加/删除/修改/查看用户", "pdesc": u"具有增加/删除/修改/查看角色用户权限"},
-        # {"pid": PERMISSION_PERMISSION_PROJECT_ASSIGNED, "pname": u"项目分配权限", "pdesc": u"可以通过权限管理，查看具有项目管理权限的角色用户，并进行项目分配"},
+        {"pid": PERMISSION_PERMISSION_PROJECT_ASSIGNED, "pname": u"项目分配权限", "pdesc": u"可以通过权限管理，查看具有项目管理权限的角色用户，并进行项目分配"},
         {"pid": PERMISSION_ENTERPRISE_ALL_SEE, "pname": u"企业查看权限", "pdesc": u"查看所有企业信息，包括查看项目信息"},
         {"pid": PERMISSION_ENTERPRISE_PART, "pname": u"企业管理权限", "pdesc": u"查看和编辑自己建立的企业和企业下的所有项目"},
         {"pid": PERMISSION_PROJECT_PART, "pname": u"项目管理权限", "pdesc": u"查看和编辑分配的项目"},
